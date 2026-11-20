@@ -9,6 +9,8 @@ from torch_scatter import scatter
 import torch_geometric.nn as pygnn
 from torch_geometric.graphgym import cfg
 
+from .norm import build_norm
+
 class GatedGCNLayer(pyg_nn.conv.MessagePassing):
     """
         GatedGCN layer
@@ -41,22 +43,22 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
         self.residual = residual
         self.e = None
 
-        self.batch_norm = True
+        # CS5491: configurable normalization (default = upstream BatchNorm).
+        self.norm_name = getattr(cfg.gnn, 'norm', 'batch')
+        self.batch_norm = self.norm_name != 'none'
         self.ffn = ffn
         
-        if self.batch_norm:
-            self.bn_node_x = nn.BatchNorm1d(out_dim)
-            self.bn_edge_e = nn.BatchNorm1d(out_dim)
-            
+        self.bn_node_x = build_norm(self.norm_name, out_dim)
+        # Edge features carry no graph-index vector; pass batch=None at call time.
+        self.bn_edge_e = build_norm(self.norm_name, out_dim)
+        
         if self.ffn:
             # Feed Forward block.
-            if self.batch_norm:
-                self.norm1_local = nn.BatchNorm1d(out_dim)
+            self.norm1_local = build_norm(self.norm_name, out_dim)
             self.ff_linear1 = nn.Linear(out_dim, out_dim*2)
             self.ff_linear2 = nn.Linear(out_dim*2, out_dim)
             self.act_fn_ff = register.act_dict[cfg.gnn.act]()
-            if self.batch_norm:
-                self.norm2 = nn.BatchNorm1d(out_dim)
+            self.norm2 = build_norm(self.norm_name, out_dim)
             self.ff_dropout1 = nn.Dropout(dropout)
             self.ff_dropout2 = nn.Dropout(dropout)
         
@@ -70,6 +72,7 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
 
     def forward(self, batch):
         x, e, edge_index = batch.x, batch.edge_attr, batch.edge_index
+        b_idx = getattr(batch, 'batch', None)
 
         """
         x               : [n_nodes, in_dim]
@@ -94,9 +97,8 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
                               Bx=Bx, Dx=Dx, Ex=Ex, Ce=Ce,
                               e=e, Ax=Ax,
                               PE=pe_LapPE)
-        if self.batch_norm:
-            x = self.bn_node_x(x)
-            e = self.bn_edge_e(e)
+        x = self.bn_node_x(x, b_idx)
+        e = self.bn_edge_e(e, None)
 
         x = self.act_fn_x(x)
         e = self.act_fn_e(e)
@@ -112,13 +114,11 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
         batch.edge_attr = e
         
         if self.ffn:
-            if self.batch_norm:
-                batch.x = self.norm1_local(batch.x)
+            batch.x = self.norm1_local(batch.x, b_idx)
             
             batch.x = batch.x + self._ff_block(batch.x)
 
-            if self.batch_norm:
-                batch.x = self.norm2(batch.x)
+            batch.x = self.norm2(batch.x, b_idx)
 
         return batch
 

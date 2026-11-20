@@ -7,6 +7,8 @@ from torch_scatter import scatter
 import torch
 import torch.nn.functional as F
 
+from .norm import build_norm
+
 
     
 class GCNConvLayer(nn.Module):
@@ -17,11 +19,13 @@ class GCNConvLayer(nn.Module):
         self.dim_out = dim_out
         self.dropout = dropout
         self.residual = residual
-        self.batch_norm = True
+        # CS5491: replace the hard-coded `self.batch_norm = True` with a
+        # configurable normalization.  Default stays identical to upstream.
+        self.norm_name = getattr(cfg.gnn, 'norm', 'batch')
+        self.batch_norm = self.norm_name != 'none'
         self.ffn = ffn
-        
-        if self.batch_norm:
-            self.bn_node_x = nn.BatchNorm1d(dim_out)
+
+        self.bn_node_x = build_norm(self.norm_name, dim_out)
         
         self.act = nn.Sequential(
             register.act_dict[cfg.gnn.act](),
@@ -32,13 +36,11 @@ class GCNConvLayer(nn.Module):
         
         if self.ffn:
             # Feed Forward block.
-            if self.batch_norm:
-                self.norm1_local = nn.BatchNorm1d(dim_out)
+            self.norm1_local = build_norm(self.norm_name, dim_out)
             self.ff_linear1 = nn.Linear(dim_out, dim_out*2)
             self.ff_linear2 = nn.Linear(dim_out*2, dim_out)
             self.act_fn_ff = register.act_dict[cfg.gnn.act]()
-            if self.batch_norm:
-                self.norm2 = nn.BatchNorm1d(dim_out)
+            self.norm2 = build_norm(self.norm_name, dim_out)
             self.ff_dropout1 = nn.Dropout(dropout)
             self.ff_dropout2 = nn.Dropout(dropout)
         
@@ -50,23 +52,21 @@ class GCNConvLayer(nn.Module):
 
     def forward(self, batch):
         x_in = batch.x
-        
+        b_idx = getattr(batch, 'batch', None)  # CS5491: graph index for GraphNorm
+
         batch.x = self.model(batch.x, batch.edge_index)
-        if self.batch_norm:
-            batch.x = self.bn_node_x(batch.x)
+        batch.x = self.bn_node_x(batch.x, b_idx)
         batch.x = self.act(batch.x)
         
         if self.residual:
             batch.x = x_in + batch.x  # Residual connection.
         
         if self.ffn:
-            if self.batch_norm:
-                batch.x = self.norm1_local(batch.x)
+            batch.x = self.norm1_local(batch.x, b_idx)
             
             batch.x = batch.x + self._ff_block(batch.x)
 
-            if self.batch_norm:
-                batch.x = self.norm2(batch.x)
+            batch.x = self.norm2(batch.x, b_idx)
 
         return batch
     

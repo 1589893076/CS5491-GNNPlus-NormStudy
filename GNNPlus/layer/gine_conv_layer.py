@@ -9,6 +9,8 @@ from torch_geometric.nn import Linear as Linear_pyg
 import torch_geometric.graphgym.register as register
 from torch_geometric.graphgym import cfg
 
+from .norm import build_norm
+
 class GINEConvESLapPE(pyg_nn.conv.MessagePassing):
     """GINEConv Layer with EquivStableLapPE implementation.
 
@@ -103,18 +105,18 @@ class GINEConvLayer(nn.Module):
             pyg_nn.Linear(dim_out, dim_out))
         self.model = pyg_nn.GINEConv(gin_nn)
         
-        self.batch_norm = True
+        # CS5491: configurable normalization for the FFN sub-block.
+        self.norm_name = getattr(cfg.gnn, 'norm', 'batch')
+        self.batch_norm = self.norm_name != 'none'
         self.ffn = ffn
         
         if self.ffn:
             # Feed Forward block.
-            if self.batch_norm:
-                self.norm1_local = nn.BatchNorm1d(dim_out)
+            self.norm1_local = build_norm(self.norm_name, dim_out)
             self.ff_linear1 = nn.Linear(dim_out, dim_out*2)
             self.ff_linear2 = nn.Linear(dim_out*2, dim_out)
             self.act_fn_ff = register.act_dict[cfg.gnn.act]()
-            if self.batch_norm:
-                self.norm2 = nn.BatchNorm1d(dim_out)
+            self.norm2 = build_norm(self.norm_name, dim_out)
             self.ff_dropout1 = nn.Dropout(dropout)
             self.ff_dropout2 = nn.Dropout(dropout)
 
@@ -126,6 +128,7 @@ class GINEConvLayer(nn.Module):
     
     def forward(self, batch):
         x_in = batch.x
+        b_idx = getattr(batch, 'batch', None)
 
         batch.x = self.model(batch.x, batch.edge_index, batch.edge_attr)
 
@@ -136,13 +139,11 @@ class GINEConvLayer(nn.Module):
             batch.x = x_in + batch.x  # residual connection
 
         if self.ffn:
-            if self.batch_norm:
-                batch.x = self.norm1_local(batch.x)
+            batch.x = self.norm1_local(batch.x, b_idx)
             
             batch.x = batch.x + self._ff_block(batch.x)
 
-            if self.batch_norm:
-                batch.x = self.norm2(batch.x)
+            batch.x = self.norm2(batch.x, b_idx)
                 
         return batch
 

@@ -10,3 +10,8 @@ def custom_gnn_cfg(cfg):
     # Use residual connections between the GNN layers.
     cfg.gnn.residual = True
     cfg.gnn.ffn = True
+
+    # CS5491 project: make normalization a first-class configurable component.
+    # Default 'batch' reproduces the published GNN+ setup exactly.
+    # Choices: batch | layer | graph | pair | none
+    cfg.gnn.norm = 'batch'

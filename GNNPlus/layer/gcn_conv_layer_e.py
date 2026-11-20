@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as F
 
 from torch_geometric.nn import GCNConv
+from .norm import build_norm
 import torch
 from torch import Tensor
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
@@ -85,10 +86,11 @@ class GCNConvLayer(nn.Module):
         self.dim_out = dim_out
         self.dropout = dropout
         self.residual = residual
-        self.batch_norm = True
+        # CS5491: configurable normalization (default = upstream BatchNorm).
+        self.norm_name = getattr(cfg.gnn, 'norm', 'batch')
+        self.batch_norm = self.norm_name != 'none'
         self.ffn = ffn
-        if self.batch_norm:
-            self.bn_node_x = nn.BatchNorm1d(dim_out)
+        self.bn_node_x = build_norm(self.norm_name, dim_out)
         self.act = nn.Sequential(
             register.act_dict[cfg.gnn.act](),
             nn.Dropout(self.dropout),
@@ -101,13 +103,13 @@ class GCNConvLayer(nn.Module):
         
         if self.ffn:
             # Feed Forward block.
-            if self.batch_norm:
-                self.norm1_local = nn.BatchNorm1d(dim_in)
+            # NOTE: upstream uses dim_in here; preserved to avoid any change
+            # in the default configuration (dim_in == dim_out for ZINC).
+            self.norm1_local = build_norm(self.norm_name, dim_in)
             self.ff_linear1 = nn.Linear(dim_in, dim_in*2)
             self.ff_linear2 = nn.Linear(dim_in*2, dim_in)
             self.act_fn_ff = register.act_dict[cfg.gnn.act]()
-            if self.batch_norm:
-                self.norm2 = nn.BatchNorm1d(dim_in)
+            self.norm2 = build_norm(self.norm_name, dim_in)
             self.ff_dropout1 = nn.Dropout(dropout)
             self.ff_dropout2 = nn.Dropout(dropout)
         
@@ -120,23 +122,21 @@ class GCNConvLayer(nn.Module):
     def forward(self, batch):
         x_in = batch.x
         e_in = batch.edge_attr
+        b_idx = getattr(batch, 'batch', None)  # CS5491: graph index for GraphNorm
         
         batch.x = self.model(batch.x, batch.edge_index, batch.edge_attr)
-        if self.batch_norm:
-            batch.x = self.bn_node_x(batch.x)
+        batch.x = self.bn_node_x(batch.x, b_idx)
         batch.x = self.act(batch.x)
         
         if self.residual:
             batch.x = x_in + batch.x  # Residual connection.
         
         if self.ffn:
-            if self.batch_norm:
-                batch.x = self.norm1_local(batch.x)
+            batch.x = self.norm1_local(batch.x, b_idx)
             
             batch.x = batch.x + self._ff_block(batch.x)
 
-            if self.batch_norm:
-                batch.x = self.norm2(batch.x)
+            batch.x = self.norm2(batch.x, b_idx)
 
         return batch
     

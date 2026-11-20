@@ -1,0 +1,8 @@
+# Generated outputs
+results/*
+!results/pilot_norm_study.csv
+logs/
+configs/generated/
+__pycache__/
+*.pyc
+*.egg-info/
