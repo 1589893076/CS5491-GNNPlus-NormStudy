@@ -130,14 +130,15 @@ marker and never substitutes a hand-written number.
 After copying the aggregated CSV back into `results/`, run:
 
 ```bash
-python docs/finish_project.py
-python docs/finish_project.py --repo-url https://github.com/<user>/<repo>.git
+python docs/finish_project.py            # origin already points at the public repo
+python docs/finish_project.py --skip-git # rebuild the reports only
+python docs/finish_project.py --push     # also push (needs your own credentials)
 ```
 
 This validates the result grid, rebuilds both PDFs, checks page counts and
-Table 3 / Figure 1 / conclusions, then optionally sets the git remote and
-commits the results. Add `--push` to also push (with your own credentials) or
-`--skip-git` to only rebuild the reports.
+Table 3 / Figure 1 / conclusions, then commits the results. `--repo-url` is
+only needed if `origin` still points elsewhere. The public repository for this
+project is `https://github.com/1589893076/CS5491-GNNPlus-NormStudy`.
 
 A single cell can also be run directly, e.g.:
 

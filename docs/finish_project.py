@@ -8,14 +8,17 @@ at the public repository and commits everything.
 
 Usage (from the repository root)::
 
+    # origin already points at the public repository; no URL needed
     python docs/finish_project.py
+    python docs/finish_project.py --push
     python docs/finish_project.py --repo-url https://github.com/<user>/<repo>.git
-    python docs/finish_project.py --repo-url ... --push
     python docs/finish_project.py --skip-git
     python docs/finish_project.py --csv path/to.csv --out-dir tmp --skip-git
 
 The last form is useful for validating a result file without touching the
-official stage folders or the git history.
+official stage folders or the git history. ``--repo-url`` is only needed when
+the local ``origin`` still points somewhere else; omitting it keeps the
+current remote.
 
 Nothing is pushed unless ``--push`` is given, and no number is ever written
 into a report by hand: the report builder reads the aggregated CSV.
