@@ -125,6 +125,20 @@ deepest depth, BatchNorm's depth trend, the `none` ablation) by computing
 them from the CSV. When it is absent, the report keeps an explicit *pending*
 marker and never substitutes a hand-written number.
 
+### One-command finalization
+
+After copying the aggregated CSV back into `results/`, run:
+
+```bash
+python docs/finish_project.py
+python docs/finish_project.py --repo-url https://github.com/<user>/<repo>.git
+```
+
+This validates the result grid, rebuilds both PDFs, checks page counts and
+Table 3 / Figure 1 / conclusions, then optionally sets the git remote and
+commits the results. Add `--push` to also push (with your own credentials) or
+`--skip-git` to only rebuild the reports.
+
 A single cell can also be run directly, e.g.:
 
 ```bash

@@ -236,6 +236,11 @@ def zinc_insights(zinc):
         return '<font name="TNR-Bold">{}</font>'.format(text)
 
     parts = []
+    if len(measured) < 20:  # 5 normalizations x 4 depths
+        parts.append(
+            'Only {} of the 20 planned grid cells have been completed; the '
+            'observations below refer to the measured cells only.'.format(
+                len(measured)))
     deep = sorted((v[0], n, v[1], v[2])
                   for (n, d), v in measured.items() if d == dmax)
     if deep:
