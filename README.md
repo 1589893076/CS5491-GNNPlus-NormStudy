@@ -74,6 +74,20 @@ pip install scikit-learn==1.4.0 fsspec rdkit pytorch-lightning yacs \
 servers or credentials are required: ZINC is downloaded automatically by PyG
 on first use, and `wandb.use` is `False` in all study configs.
 
+### Running on Colab instead
+
+`colab/run_norm_study.ipynb` is a single T4 notebook: install dependencies →
+**preflight the ZINC download** → run the grid → aggregate → rebuild both
+PDFs → download the results. The preflight matters: it checks that the
+dataset is reachable *before* a multi-hour sweep begins.
+
+Compiled PyG extensions are optional on Colab. If no `torch_scatter` wheel
+matches the runtime's PyTorch version, the notebook activates
+`experiments/torch_scatter_fallback.py`, a pure-PyTorch implementation of the
+`scatter` reductions GNN+ uses (`python experiments/torch_scatter_fallback.py`
+runs its self-test). When the real extension is installed it takes
+precedence, so this fallback never changes an experimental number.
+
 ---
 
 ## 4. Reproduction commands
@@ -97,7 +111,19 @@ python experiments/aggregate_norm_study.py
 # 4) (Optional) re-run key cells at the paper's full 2000 epochs.
 python experiments/run_norm_study.py --norms batch graph --depths 12 20 \
   --epochs 2000 --repeat 3
+
+# 5) Rebuild both report PDFs from the result CSVs.
+python docs/build_reports.py
+#    On Colab, write both PDFs into one folder instead:
+python docs/build_reports.py --out-dir reports
 ```
+
+`docs/build_reports.py` is data-driven. When
+`results/norm_study_summary.csv` exists it fills Table 3, redraws Figure 1
+from those numbers and derives the Section 4 conclusions (best option at the
+deepest depth, BatchNorm's depth trend, the `none` ablation) by computing
+them from the CSV. When it is absent, the report keeps an explicit *pending*
+marker and never substitutes a hand-written number.
 
 A single cell can also be run directly, e.g.:
 
@@ -118,10 +144,15 @@ resumable with `--skip-existing`.
 GNNPlus/                 original code + our norm.py patch
 configs/gcn/             original configs + five zinc_norm_*.yaml
 configs/generated/       per-cell YAMLs created by the sweep script
-experiments/             sweep, aggregation, smoke test, manifest
-results/                 training output (not committed)
+experiments/             sweep, aggregation, smoke test, manifest,
+                         torch_scatter_fallback.py (extension-free fallback)
+colab/                   T4 GPU notebook for the full ZINC sweep
+results/                 pilot CSV and the aggregated ZINC summary (committed,
+                         since every report number comes from them);
+                         per-run stats.json files are ignored
 logs/                    sweep logs (not committed)
-docs/                    milestone and final report drafts (PDF source)
+docs/                    data-driven report generator (PDFs are written to the
+                         course stage folders, or to --out-dir)
 main.py                  unchanged GraphGym entry point
 ```
 

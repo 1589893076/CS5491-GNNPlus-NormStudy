@@ -1,7 +1,12 @@
 # Generated outputs
 results/*
 !results/pilot_norm_study.csv
+# The aggregated ZINC result table IS committed: it is the source of every
+# number in the submitted report, so reviewers must be able to see it.
+!results/norm_study_summary.csv
+!results/norm_study_summary.md
 logs/
+datasets/
 configs/generated/
 __pycache__/
 *.pyc

@@ -89,15 +89,21 @@ def main():
     for norm in args.norms:
         for depth in args.depths:
             cfg_path = make_config(norm, depth, args.epochs, args.template)
+            # Store a portable relative command in the manifest; on this
+            # machine subprocess still runs the absolute interpreter path.
             cmd = [sys.executable, str(ROOT / 'main.py'),
                    '--cfg', str(cfg_path.relative_to(ROOT)),
                    '--repeat', str(args.repeat), 'seed', str(args.seed)]
+            portable_cmd = ' '.join([
+                'python', 'main.py', '--cfg',
+                str(cfg_path.relative_to(ROOT)).replace('\\', '/'),
+                '--repeat', str(args.repeat), 'seed', str(args.seed)])
             stem = cfg_path.stem
             manifest.append({
                 'norm': norm, 'depth': depth, 'seeds': args.repeat,
                 'config': str(cfg_path.relative_to(ROOT)),
                 'result_dir': 'results/norm_study/' + stem,
-                'command': ' '.join(cmd),
+                'command': portable_cmd,
             })
             if cell_complete(stem, args.repeat) and args.skip_existing:
                 print('[skip] {} d={}'.format(norm, depth))

@@ -5,7 +5,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_batch_d4.yaml",
     "result_dir": "results/norm_study/zinc_norm_batch_d4",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_batch_d4.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_batch_d4.yaml --repeat 3 seed 0"
   },
   {
     "norm": "batch",
@@ -13,7 +13,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_batch_d8.yaml",
     "result_dir": "results/norm_study/zinc_norm_batch_d8",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_batch_d8.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_batch_d8.yaml --repeat 3 seed 0"
   },
   {
     "norm": "batch",
@@ -21,7 +21,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_batch_d12.yaml",
     "result_dir": "results/norm_study/zinc_norm_batch_d12",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_batch_d12.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_batch_d12.yaml --repeat 3 seed 0"
   },
   {
     "norm": "batch",
@@ -29,7 +29,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_batch_d20.yaml",
     "result_dir": "results/norm_study/zinc_norm_batch_d20",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_batch_d20.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_batch_d20.yaml --repeat 3 seed 0"
   },
   {
     "norm": "layer",
@@ -37,7 +37,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_layer_d4.yaml",
     "result_dir": "results/norm_study/zinc_norm_layer_d4",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_layer_d4.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_layer_d4.yaml --repeat 3 seed 0"
   },
   {
     "norm": "layer",
@@ -45,7 +45,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_layer_d8.yaml",
     "result_dir": "results/norm_study/zinc_norm_layer_d8",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_layer_d8.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_layer_d8.yaml --repeat 3 seed 0"
   },
   {
     "norm": "layer",
@@ -53,7 +53,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_layer_d12.yaml",
     "result_dir": "results/norm_study/zinc_norm_layer_d12",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_layer_d12.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_layer_d12.yaml --repeat 3 seed 0"
   },
   {
     "norm": "layer",
@@ -61,7 +61,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_layer_d20.yaml",
     "result_dir": "results/norm_study/zinc_norm_layer_d20",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_layer_d20.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_layer_d20.yaml --repeat 3 seed 0"
   },
   {
     "norm": "graph",
@@ -69,7 +69,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_graph_d4.yaml",
     "result_dir": "results/norm_study/zinc_norm_graph_d4",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_graph_d4.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_graph_d4.yaml --repeat 3 seed 0"
   },
   {
     "norm": "graph",
@@ -77,7 +77,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_graph_d8.yaml",
     "result_dir": "results/norm_study/zinc_norm_graph_d8",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_graph_d8.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_graph_d8.yaml --repeat 3 seed 0"
   },
   {
     "norm": "graph",
@@ -85,7 +85,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_graph_d12.yaml",
     "result_dir": "results/norm_study/zinc_norm_graph_d12",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_graph_d12.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_graph_d12.yaml --repeat 3 seed 0"
   },
   {
     "norm": "graph",
@@ -93,7 +93,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_graph_d20.yaml",
     "result_dir": "results/norm_study/zinc_norm_graph_d20",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_graph_d20.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_graph_d20.yaml --repeat 3 seed 0"
   },
   {
     "norm": "pair",
@@ -101,7 +101,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_pair_d4.yaml",
     "result_dir": "results/norm_study/zinc_norm_pair_d4",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_pair_d4.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_pair_d4.yaml --repeat 3 seed 0"
   },
   {
     "norm": "pair",
@@ -109,7 +109,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_pair_d8.yaml",
     "result_dir": "results/norm_study/zinc_norm_pair_d8",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_pair_d8.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_pair_d8.yaml --repeat 3 seed 0"
   },
   {
     "norm": "pair",
@@ -117,7 +117,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_pair_d12.yaml",
     "result_dir": "results/norm_study/zinc_norm_pair_d12",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_pair_d12.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_pair_d12.yaml --repeat 3 seed 0"
   },
   {
     "norm": "pair",
@@ -125,7 +125,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_pair_d20.yaml",
     "result_dir": "results/norm_study/zinc_norm_pair_d20",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_pair_d20.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_pair_d20.yaml --repeat 3 seed 0"
   },
   {
     "norm": "none",
@@ -133,7 +133,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_none_d4.yaml",
     "result_dir": "results/norm_study/zinc_norm_none_d4",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_none_d4.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_none_d4.yaml --repeat 3 seed 0"
   },
   {
     "norm": "none",
@@ -141,7 +141,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_none_d8.yaml",
     "result_dir": "results/norm_study/zinc_norm_none_d8",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_none_d8.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_none_d8.yaml --repeat 3 seed 0"
   },
   {
     "norm": "none",
@@ -149,7 +149,7 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_none_d12.yaml",
     "result_dir": "results/norm_study/zinc_norm_none_d12",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_none_d12.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_none_d12.yaml --repeat 3 seed 0"
   },
   {
     "norm": "none",
@@ -157,6 +157,6 @@
     "seeds": 3,
     "config": "configs\\generated\\zinc_norm_none_d20.yaml",
     "result_dir": "results/norm_study/zinc_norm_none_d20",
-    "command": "C:\\Users\\Lenovo\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe C:\\Users\\Lenovo\\Desktop\\CS 5491\\GNNPlus-main\\main.py --cfg configs\\generated\\zinc_norm_none_d20.yaml --repeat 3 seed 0"
+    "command": "python main.py --cfg configs/generated/zinc_norm_none_d20.yaml --repeat 3 seed 0"
   }
 ]

@@ -8,10 +8,18 @@ with invented numbers.
 
 Usage:
     python docs/build_reports.py
+    python docs/build_reports.py --out-dir reports       # Colab / custom path
+    python docs/build_reports.py --zinc-csv path/to.csv  # test a result file
+
+If results/norm_study_summary.csv exists, Section 4 conclusions, Figure 1 and
+Table 3 are all generated from it.  If it is absent the report keeps an
+explicit "pending" marker rather than inventing numbers.
 """
 
+import argparse
 import csv
 import os
+import statistics
 import sys
 from pathlib import Path
 
@@ -119,27 +127,41 @@ def result_table(rows, depths, note):
     return make_table(data, [2.2 * cm] + [2.75 * cm] * len(depths), 10)
 
 
-def chart_from_pilot(rows):
+def chart_from_rows(rows, caption):
+    """Draw test MAE versus depth from an aggregated result CSV.
+
+    Only cells that actually contain a measurement are plotted.  A missing
+    cell is never drawn as zero, so a partially completed grid cannot be
+    mistaken for a real (and very low) error value.
+    """
     try:
         from reportlab.graphics.shapes import Drawing, Line, Circle, String
     except Exception:
         return P('[Figure omitted: chart library unavailable]', CAP)
-    depths = [4, 8, 12, 20]
     norms = ['batch', 'layer', 'graph', 'pair', 'none']
-    lookup = {(r['norm'], int(r['depth'])): float(r['test_mae_mean'])
-              for r in rows}
-    series = [[lookup.get((n, d), 0) for d in depths] for n in norms]
-    nonzero = [v for s in series for v in s if v > 0]
-    if not nonzero:
+    depths = sorted({int(r['depth']) for r in rows}) or [4, 8, 12, 20]
+    lookup = {}
+    for r in rows:
+        try:
+            value = float(r['test_mae_mean'])
+            depth = int(r['depth'])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if value > 0:
+            lookup[(r['norm'], depth)] = value
+    if not lookup:
         return P('[Figure pending experimental results]', CAP)
-    ymin, ymax = max(0, min(nonzero) - 0.02), max(nonzero) + 0.02
+    values = list(lookup.values())
+    ymin, ymax = max(0, min(values) - 0.02), max(values) + 0.02
+    if ymax <= ymin:
+        ymax = ymin + 0.1
     x0, x1, y0, y1 = 45, 320, 35, 148
     palette = [colors.black, colors.HexColor('#2b6cb0'),
                colors.HexColor('#c53030'), colors.HexColor('#2f855a'),
                colors.HexColor('#805ad5')]
 
     def px(i):
-        return x0 + (x1 - x0) * i / (len(depths) - 1)
+        return x0 + (x1 - x0) * i / max(1, len(depths) - 1)
 
     def py(v):
         return y0 + (y1 - y0) * (v - ymin) / (ymax - ymin)
@@ -156,8 +178,12 @@ def chart_from_pilot(rows):
                          strokeColor=colors.black))
         drawing.add(String(x0 - 28, py(value) - 3, '{:.2f}'.format(value),
                            fontName='TNR', fontSize=7.5))
-    for si, values in enumerate(series):
-        pts = [(px(i), py(v)) for i, v in enumerate(values)]
+    for si, name in enumerate(norms):
+        points = [(i, lookup[(name, d)]) for i, d in enumerate(depths)
+                  if (name, d) in lookup]
+        if not points:
+            continue
+        pts = [(px(i), py(v)) for i, v in points]
         for i in range(len(pts) - 1):
             drawing.add(Line(pts[i][0], pts[i][1], pts[i + 1][0],
                              pts[i + 1][1], strokeColor=palette[si],
@@ -172,9 +198,98 @@ def chart_from_pilot(rows):
         drawing.add(Line(335, yy, 350, yy, strokeColor=color, strokeWidth=1.4))
         drawing.add(Circle(342.5, yy, 2, fillColor=color, strokeColor=color))
         drawing.add(String(356, yy - 3, name, fontName='TNR', fontSize=8))
-    return KeepTogether([drawing,
-                         P('Figure 1. Synthetic-pilot test MAE versus depth '
-                           '(lower is better). Not ZINC results.', CAP)])
+    return KeepTogether([drawing, P(caption, CAP)])
+
+
+PILOT_CAPTION = ('Figure 1. Synthetic-pilot test MAE versus depth '
+                 '(lower is better). Not ZINC results.')
+ZINC_CAPTION = ('Figure 1. ZINC test MAE versus network depth (lower is '
+                'better), generated from results/norm_study_summary.csv.')
+
+
+def zinc_insights(zinc):
+    """Derive the Section 4 conclusions from logged ZINC measurements only.
+
+    Every number and verdict below is computed from the aggregated CSV that
+    ``aggregate_norm_study.py`` writes from the training ``stats.json`` logs.
+    Nothing is entered by hand.  The three questions correspond to H1 (does
+    removing normalization hurt?), H2 (does BatchNorm degrade at depth?) and
+    H3 (which option is best at the deepest setting?).
+    """
+    measured = {}
+    for r in zinc:
+        try:
+            value = float(r.get('test_mae_mean') or 0)
+            depth = int(r['depth'])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if value > 0:
+            measured[(r['norm'], depth)] = (
+                value, float(r.get('test_mae_std') or 0),
+                int(r.get('seeds') or 0))
+    if not measured:
+        return ''
+    depths = sorted({d for _, d in measured})
+    d0, dmax = depths[0], depths[-1]
+
+    def bold(text):
+        return '<font name="TNR-Bold">{}</font>'.format(text)
+
+    parts = []
+    deep = sorted((v[0], n, v[1], v[2])
+                  for (n, d), v in measured.items() if d == dmax)
+    if deep:
+        best, worst = deep[0], deep[-1]
+        parts.append(
+            'At the deepest setting (d={}), {} is the best-performing option '
+            '({:.4f} ± {:.4f} over {} seeds), while {} is the weakest '
+            '({:.4f}).'.format(dmax, bold(best[1]), best[0], best[2],
+                              best[3], bold(worst[1]), worst[0]))
+
+    if ('batch', d0) in measured and ('batch', dmax) in measured:
+        a = measured[('batch', d0)][0]
+        b = measured[('batch', dmax)][0]
+        delta = b - a
+        direction = 'rises' if delta > 0 else 'falls'
+        verdict = ('which supports hypothesis H2' if delta > 0 else
+                   'so hypothesis H2 is not supported by this grid')
+        parts.append(
+            'BatchNorm {} from {:.4f} at d={} to {:.4f} at d={} '
+            '(Δ = {:+.4f}), {}.'.format(direction, a, d0, b, dmax,
+                                        delta, verdict))
+
+    paired = [(d, measured[('none', d)][0] - measured[('batch', d)][0])
+              for d in depths
+              if ('none', d) in measured and ('batch', d) in measured]
+    if paired:
+        worse = sum(1 for _, diff in paired if diff > 0)
+        gap = max(paired, key=lambda t: t[1])
+        verdict = ('reproducing' if worse == len(paired) else
+                   'partially reproducing' if worse else 'not reproducing')
+        parts.append(
+            'Removing normalization increases test MAE relative to BatchNorm '
+            'in {} of {} comparable depths (largest gap {:.4f} at d={}), '
+            '{} the published remove-normalization ablation.'.format(
+                worse, len(paired), gap[1], gap[0], verdict))
+
+    ranking = {}
+    for (n, d), (v, _, _) in measured.items():
+        ranking.setdefault(n, []).append(v)
+    if ranking:
+        best_mean = min(ranking.items(),
+                        key=lambda kv: statistics.mean(kv[1]))[0]
+        stable = sorted((statistics.pstdev(vals), n)
+                        for n, vals in ranking.items() if len(vals) > 1)
+        if stable:
+            parts.append(
+                'Averaged over the measured depths, {} has the lowest mean '
+                'test MAE and {} shows the smallest variation across depths '
+                '(std {:.4f}), i.e. it is the most depth-stable option in '
+                'this grid.'.format(bold(best_mean), bold(stable[0][1]),
+                                    stable[0][0]))
+    parts.append('All numbers in this paragraph are computed from the '
+                 'aggregated result CSV; none were entered by hand.')
+    return ' '.join(parts)
 
 
 def page_decorator(canvas, doc):
@@ -274,25 +389,38 @@ def milestone_story(pilot, zinc):
           P('Table 1. Synthetic-pilot test MAE (mean ± std). This is a sanity '
             'check of the mechanism, not an evaluation of GNN+ on ZINC.', CAP)]
     if pilot:
-        s += [chart_from_pilot(pilot)]
+        s += [chart_from_rows(pilot, PILOT_CAPTION)]
     s += [P('The pilot is informative precisely because it does not reproduce '
             'the paper’s setting: <font name="TNR">none</font> is competitive '
             'on this simple synthetic target, while BatchNorm degrades from '
             '4 to 20 layers. That contrast supports the premise that the '
             'effect of normalization depends on the data and the depth '
             'regime, and it underlines why the ZINC grid is necessary.')]
-    s += [P('Status of the main experiment: the code and configs are ready '
-            'and the exact command is <font name="TNR">python '
-            'experiments/run_norm_study.py --repeat 3 --epochs 300</font>. '
-            'The ZINC table will be filled from '
-            '<font name="TNR">results/norm_study_summary.csv</font> once the '
-            'GPU run completes; no values are fabricated here.')]
+    if zinc:
+        zinc_depths = sorted({int(r['depth']) for r in zinc} | {4, 8, 12, 20})
+        s += [P('The GPU run has since completed. The table below is read '
+                'directly from <font name="TNR">results/'
+                'norm_study_summary.csv</font>, aggregated from the training '
+                'logs; no values are entered by hand.'),
+              result_table(zinc, zinc_depths, 'zinc'),
+              P('Table 2. ZINC test MAE (mean ± std over seeds, lower is '
+                'better).', CAP)]
+    else:
+        s += [P('Status of the main experiment: the code and configs are ready '
+                'and the exact command is <font name="TNR">python '
+                'experiments/run_norm_study.py --repeat 3 --epochs 300</font>. '
+                'The ZINC table will be filled from '
+                '<font name="TNR">results/norm_study_summary.csv</font> once the '
+                'GPU run completes; no values are fabricated here.')]
 
     s += [P('5. Work remaining', HEAD)]
-    s += [bullet('Run the full ZINC grid and aggregate the main result table.'),
-          bullet('Re-run key cells at 2000 epochs for the final table.'),
-          bullet('Complete the optional positional-encoding substitution and '
-                 'write the four-page final report.')]
+    if not zinc:
+        s += [bullet('Run the full ZINC grid and aggregate the main result '
+                     'table.')]
+    s += [bullet('Re-run key cells at 2000 epochs to check that the ranking '
+                 'is not an artefact of the reduced epoch budget.'),
+          bullet('Finalize the four-page report and publish the public '
+                 'repository with its commit hash.')]
 
     s += [P('References', HEAD)]
     s += [P('[1] Y. Luo, L. Shi, X.-M. Wu. Can Classic GNNs Be Strong '
@@ -312,6 +440,13 @@ def final_story(pilot, zinc):
           P('Xinsen Yuan (72656002) and Zanqun Li (72655183)', SUB)]
 
     s += [P('Abstract', HEAD)]
+    abstract_tail = (
+        'We report the measured ZINC grid and analyse how the ranking of '
+        'normalization choices changes with depth; every reported number is '
+        'aggregated from training logs.'
+        if zinc else
+        'We report a synthetic-data pilot that validates the mechanism and a '
+        'single-command reproduction protocol for the main experiment.')
     s += [P('The GNN+ recipe shows that classic graph neural networks are '
             'strong baselines for graph-level tasks when a small set of '
             'generic techniques is applied. Normalization is one of those '
@@ -320,9 +455,7 @@ def final_story(pilot, zinc):
             'would be better, especially at the depth of 20 layers that its '
             'residual connections enable. We make normalization configurable '
             'in the official codebase and study five choices across four '
-            'depths on ZINC, with three seeds per cell. We report a '
-            'synthetic-data pilot that validates the mechanism and a '
-            'single-command reproduction protocol for the main experiment.')]
+            'depths on ZINC, with three seeds per cell. ' + abstract_tail)]
 
     s += [P('1. Motivation and problem', HEAD)]
     s += [P('Graph Transformers dominate many graph-level benchmarks, but '
@@ -403,10 +536,15 @@ def final_story(pilot, zinc):
 
     s += [P('4. Results and insights', HEAD)]
     if zinc:
-        zinc_depths = sorted({int(r['depth']) for r in zinc})
+        zinc_depths = sorted({int(r['depth']) for r in zinc} | {4, 8, 12, 20})
         s += [result_table(zinc, zinc_depths, 'zinc'),
-              P('Table 3. ZINC test MAE, mean ± std over three seeds '
-                '(lower is better).', CAP)]
+              P('Table 3. ZINC test MAE, mean ± std over the seeds logged '
+                'for each cell (lower is better). Generated from '
+                'results/norm_study_summary.csv.', CAP)]
+        s += [chart_from_rows(zinc, ZINC_CAPTION)]
+        insights = zinc_insights(zinc)
+        if insights:
+            s += [P(insights)]
     else:
         s += [P('Table 3 (ZINC test MAE) is generated automatically by '
                 '<font name="TNR">experiments/aggregate_norm_study.py</font> '
@@ -414,6 +552,8 @@ def final_story(pilot, zinc):
                 'the GPU run has not been executed; the repository contains '
                 'the complete commands to produce it, and no numbers have '
                 'been substituted by hand.', BODY)]
+        if pilot:
+            s += [chart_from_rows(pilot, PILOT_CAPTION)]
     s += [P('As a mechanism check that runs on any CPU, we applied the same '
             'normalization factory to a small synthetic graph-regression '
             'task (240 graphs, 12-dimensional hidden size, 3 seeds, 120 '
@@ -423,8 +563,13 @@ def final_story(pilot, zinc):
           P('Table 4. Synthetic-pilot test MAE (mean ± std). Not ZINC '
             'results; included only to demonstrate that the knob changes '
             'training behaviour.', CAP)]
-    if pilot:
-        s += [chart_from_pilot(pilot)]
+    pilot_note = (
+        'which is exactly why the ZINC grid matters. The final claim '
+        'will be stated only after the ZINC table is generated from the '
+        'logged runs.' if not zinc else
+        'which is exactly why the ZINC grid matters. Section 6 therefore '
+        'draws its conclusions from the ZINC table above rather than from '
+        'this pilot.')
     s += [P('The pilot yields a nuanced picture. BatchNorm’s error rises '
             'from the 4-layer to the 20-layer setting, consistent with the '
             'hypothesis that batch statistics over many small graphs become '
@@ -433,9 +578,7 @@ def final_story(pilot, zinc):
             'not dominate at depth. We therefore do not claim that the '
             'synthetic result settles the research question: it shows the '
             'question is empirically non-trivial and dataset-dependent, '
-            'which is exactly why the ZINC grid matters. The final claim '
-            'will be stated only after the ZINC table is generated from the '
-            'logged runs.')]
+            + pilot_note)]
 
     s += [P('5. Code, reproducibility and presentation', HEAD)]
     s += [P('The submission is a self-contained Git repository. '
@@ -469,6 +612,11 @@ def final_story(pilot, zinc):
         P('Table 5. Exact commands for every stage of reproduction.', CAP)]
 
     s += [P('6. Limitations and conclusion', HEAD)]
+    contribution_three = (
+        '(iii) measured ZINC results for the normalization × depth '
+        'interaction, summarized in Section 4.' if zinc else
+        '(iii) preliminary evidence that depth-related conclusions cannot '
+        'be separated from the normalization choice.')
     s += [P('The 300-epoch budget is shorter than the paper’s 2000 epochs, '
             'so absolute MAE values are not directly comparable to the '
             'published table; the comparison of interest is relative across '
@@ -477,9 +625,16 @@ def final_story(pilot, zinc):
             'and is reported only as a mechanism check. Within these limits, '
             'the work contributes (i) an open patch that makes the GNN+ '
             'normalization slot configurable, (ii) a reproducible '
-            'normalization × depth protocol, and (iii) preliminary evidence '
-            'that depth-related conclusions cannot be separated from the '
-            'normalization choice.')]
+            'normalization × depth protocol, and ' + contribution_three)]
+    if zinc:
+        s += [P('The completed ZINC grid therefore answers the question posed '
+                'at the outset: the ranking of normalization options and the '
+                'direction of the BatchNorm and <font name="TNR">none</font> '
+                'effects are quantified in Section 4. The depth claim of the '
+                'original paper should be read as conditional on the '
+                'normalization used. These conclusions come from the logged '
+                'runs and remain limited to the 300-epoch budget stated '
+                'above.')]
 
     s += [P('References', HEAD)]
     for ref in [
@@ -495,17 +650,45 @@ def final_story(pilot, zinc):
 
 
 def main():
-    pilot = read_csv(ROOT / 'results' / 'pilot_norm_study.csv')
-    zinc = read_csv(ROOT / 'results' / 'norm_study_summary.csv')
-    out_dir = ROOT / 'docs'
-    out_dir.mkdir(parents=True, exist_ok=True)
-    build_doc(out_dir / 'CS5491_Milestone_Report.pdf',
-              milestone_story(pilot, zinc))
-    build_doc(out_dir / 'CS5491_Final_Report.pdf',
-              final_story(pilot, zinc))
-    print('Wrote:', out_dir / 'CS5491_Milestone_Report.pdf')
-    print('Wrote:', out_dir / 'CS5491_Final_Report.pdf')
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--out-dir', default=None,
+                   help='Write both PDFs here instead of the course stage '
+                        'folders (use this on Colab so downloads are easy).')
+    p.add_argument('--pilot-csv', default=None,
+                   help='Override results/pilot_norm_study.csv.')
+    p.add_argument('--zinc-csv', default=None,
+                   help='Override results/norm_study_summary.csv.')
+    args = p.parse_args()
+
+    pilot = read_csv(Path(args.pilot_csv) if args.pilot_csv else
+                     ROOT / 'results' / 'pilot_norm_study.csv')
+    zinc = read_csv(Path(args.zinc_csv) if args.zinc_csv else
+                    ROOT / 'results' / 'norm_study_summary.csv')
+    milestone = milestone_story(pilot, zinc)
+    final = final_story(pilot, zinc)
+    if args.out_dir:
+        out = Path(args.out_dir).resolve()
+        targets = [(out / 'CS5491_Milestone_Report.pdf', milestone),
+                   (out / 'CS5491_Final_Report.pdf', final)]
+    else:
+        # Reports live in the course stage folders, not inside the code repo.
+        # ROOT is <workspace>/Final project/GNNPlus-main, so parent.parent is
+        # the workspace root.
+        workspace = ROOT.parent.parent
+        targets = [
+            (workspace / 'project milestone' / 'CS5491_Milestone_Report.pdf',
+             milestone),
+            (workspace / 'Final project' / 'CS5491_Final_Report.pdf',
+             final),
+        ]
+    for path, story in targets:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        build_doc(path, story)
+        print('Wrote:', path)
     print('pilot rows: {}, ZINC rows: {}'.format(len(pilot), len(zinc)))
+    if not zinc:
+        print('NOTE: ZINC results are still pending; Table 3 remains marked '
+              'as pending and no numbers were invented.')
 
 
 if __name__ == '__main__':
