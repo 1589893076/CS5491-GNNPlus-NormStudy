@@ -6,7 +6,8 @@ import GNNPlus  # noqa, register custom modules
 from GNNPlus.optimizer.extra_optimizers import ExtendedSchedulerConfig
 
 from torch_geometric.graphgym.cmd_args import parse_args
-from torch_geometric.graphgym.config import (cfg, set_cfg, load_cfg)
+from torch_geometric.graphgym.config import (cfg, set_cfg, load_cfg,
+                                             set_out_dir, set_run_dir)
 from torch_geometric.graphgym.loader import create_loader
 from torch_geometric.graphgym.logger import set_printing
 from torch_geometric.graphgym.optim import create_optimizer, \
@@ -70,6 +71,10 @@ if __name__ == '__main__':
     # Load config file
     set_cfg(cfg)
     load_cfg(cfg, args)
+    # PyG >= 2.1 no longer calls set_out_dir/set_run_dir from load_cfg.
+    # Restore them so results land in results/<config-stem>/<seed>/ instead
+    # of all runs appending to the same results/ dir.
+    set_out_dir(cfg.out_dir, args.cfg_file)
     print("gnn dropout: ", cfg.gnn.dropout)
 
     # Set Pytorch environment
@@ -82,6 +87,7 @@ if __name__ == '__main__':
         cfg.dataset.split_index = split_index
         cfg.seed = seed
         cfg.run_id = run_id
+        set_run_dir(cfg.out_dir)
         seed_everything(cfg.seed)
         auto_select_device()
         if cfg.pretrained.dir:
