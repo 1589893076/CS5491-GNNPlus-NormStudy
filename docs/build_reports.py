@@ -37,6 +37,10 @@ from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate,
 ROOT = Path(__file__).resolve().parents[1]
 FONT_DIR = Path(os.environ.get('WINDIR', r'C:\Windows')) / 'Fonts'
 
+# Epoch budget of the ZINC sweep. Overridden by --epochs (e.g. 50 on Kaggle)
+# so the report always states the budget that was actually run.
+EPOCHS = 300
+
 
 def register_fonts():
     for name, filename in [('TNR', 'times.ttf'),
@@ -375,11 +379,11 @@ def milestone_story(pilot, zinc):
             'seeds per cell. We use the ZINC subset (about 12,000 molecular '
             'graphs, downloaded automatically by PyG), the GCN+ backbone and '
             'test MAE (lower is better) selected at the best validation epoch. '
-            'Each run uses 300 epochs to keep the grid affordable; key cells '
+            'Each run uses @EPOCHS@ epochs to keep the grid affordable; key cells '
             'will be re-run at the paper’s 2000 epochs. A sweep script '
             'generates one YAML per cell and an aggregator produces the '
             'mean ± standard-deviation table, so every reported number can be '
-            'recomputed from the committed code.')]
+            'recomputed from the committed code.'.replace('@EPOCHS@', str(EPOCHS)))]
 
     s += [P('4. Preliminary results', HEAD)]
     s += [P('The patch is complete and passes a PyTorch-only smoke test: the '
@@ -413,10 +417,10 @@ def milestone_story(pilot, zinc):
     else:
         s += [P('Status of the main experiment: the code and configs are ready '
                 'and the exact command is <font name="TNR">python '
-                'experiments/run_norm_study.py --repeat 3 --epochs 300</font>. '
+                'experiments/run_norm_study.py --repeat 3 --epochs @EPOCHS@</font>. '
                 'The ZINC table will be filled from '
                 '<font name="TNR">results/norm_study_summary.csv</font> once the '
-                'GPU run completes; no values are fabricated here.')]
+                'GPU run completes; no values are fabricated here.'.replace('@EPOCHS@', str(EPOCHS)))]
 
     s += [P('5. Work remaining', HEAD)]
     if not zinc:
@@ -533,11 +537,11 @@ def final_story(pilot, zinc):
             'normalization in {batch, layer, graph, pair, none} and depth in '
             '{4, 8, 12, 20}. Three seeds per cell; test MAE (lower is better) '
             'is read at the epoch with best validation MAE and summarized as '
-            'mean ± standard deviation. Each run trains for 300 epochs, with '
+            'mean ± standard deviation. Each run trains for @EPOCHS@ epochs, with '
             'key cells scheduled for 2000 epochs to match the paper. '
             'Baselines are the paper’s reported GCN+ number and the '
             '<font name="TNR">none</font> control, which reproduces the '
-            'remove-normalization ablation.')]
+            'remove-normalization ablation.'.replace('@EPOCHS@', str(EPOCHS)))]
 
     s += [P('4. Results and insights', HEAD)]
     if zinc:
@@ -608,7 +612,7 @@ def final_story(pilot, zinc):
         ['Reproduce original setting',
          'python main.py --cfg configs/gcn/zinc.yaml --repeat 3 seed 0'],
         ['Run the full grid',
-         'python experiments/run_norm_study.py --repeat 3 --epochs 300'],
+         'python experiments/run_norm_study.py --repeat 3 --epochs @EPOCHS@'.replace('@EPOCHS@', str(EPOCHS))],
         ['Build result table',
          'python experiments/aggregate_norm_study.py'],
         ['Rebuild this PDF',
@@ -622,7 +626,7 @@ def final_story(pilot, zinc):
         'interaction, summarized in Section 4.' if zinc else
         '(iii) preliminary evidence that depth-related conclusions cannot '
         'be separated from the normalization choice.')
-    s += [P('The 300-epoch budget is shorter than the paper’s 2000 epochs, '
+    s += [P(('The @EPOCHS@-epoch budget is shorter than the paper’s 2000 epochs, '
             'so absolute MAE values are not directly comparable to the '
             'published table; the comparison of interest is relative across '
             'normalization choices under an identical budget. The '
@@ -630,7 +634,8 @@ def final_story(pilot, zinc):
             'and is reported only as a mechanism check. Within these limits, '
             'the work contributes (i) an open patch that makes the GNN+ '
             'normalization slot configurable, (ii) a reproducible '
-            'normalization × depth protocol, and ' + contribution_three)]
+            'normalization × depth protocol, and ' + contribution_three)
+            .replace('@EPOCHS@', str(EPOCHS)))]
     if zinc:
         s += [P('The completed ZINC grid therefore answers the question posed '
                 'at the outset: the ranking of normalization options and the '
@@ -638,8 +643,8 @@ def final_story(pilot, zinc):
                 'effects are quantified in Section 4. The depth claim of the '
                 'original paper should be read as conditional on the '
                 'normalization used. These conclusions come from the logged '
-                'runs and remain limited to the 300-epoch budget stated '
-                'above.')]
+                'runs and remain limited to the @EPOCHS@-epoch budget stated '
+                'above.'.replace('@EPOCHS@', str(EPOCHS)))]
 
     s += [P('References', HEAD)]
     for ref in [
@@ -655,7 +660,11 @@ def final_story(pilot, zinc):
 
 
 def main():
+    global EPOCHS
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--epochs', type=int, default=300,
+                   help='Epoch budget actually used for the ZINC grid; '
+                        'printed in the report (use 50 for a Kaggle quick run).')
     p.add_argument('--out-dir', default=None,
                    help='Write both PDFs here instead of the course stage '
                         'folders (use this on Colab so downloads are easy).')
@@ -664,6 +673,7 @@ def main():
     p.add_argument('--zinc-csv', default=None,
                    help='Override results/norm_study_summary.csv.')
     args = p.parse_args()
+    EPOCHS = args.epochs
 
     pilot = read_csv(Path(args.pilot_csv) if args.pilot_csv else
                      ROOT / 'results' / 'pilot_norm_study.csv')

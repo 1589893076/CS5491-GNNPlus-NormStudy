@@ -81,7 +81,20 @@ on first use, and `wandb.use` is `False` in all study configs.
 PDFs → download the results. The preflight matters: it checks that the
 dataset is reachable *before* a multi-hour sweep begins.
 
-Compiled PyG extensions are optional on Colab. If no `torch_scatter` wheel
+### Running on Kaggle instead
+
+`kaggle/run_norm_study_kaggle.ipynb` is the same pipeline adapted for Kaggle
+Notebooks (free T4 x2, ~30 GPU-hours/week, 12-hour session cap). Cell 6 runs the
+full 20-cell × 3-seed grid in one session with `EPOCHS = 50` (roughly 4–5 hours
+on T4), which fits the session limit; `--skip-existing` resumes if interrupted.
+The PDF builder is called with `--epochs 50` so the report states the budget
+that was actually used — keep `EPOCHS` identical in Cell 6 and Cell 8. The final
+cells aggregate and zip the CSV/MD/PDFs for download. Import the notebook in
+Kaggle, set Accelerator = GPU T4 x2 and Internet = On, then follow the
+in-notebook instructions. To reproduce the paper's 300-epoch setting instead,
+set `EPOCHS = 300` in both cells and allow a longer/multi-session run.
+
+Compiled PyG extensions are optional on Colab/Kaggle. If no `torch_scatter` wheel
 matches the runtime's PyTorch version, the notebook activates
 `experiments/torch_scatter_fallback.py`, a pure-PyTorch implementation of the
 `scatter` reductions GNN+ uses (`python experiments/torch_scatter_fallback.py`

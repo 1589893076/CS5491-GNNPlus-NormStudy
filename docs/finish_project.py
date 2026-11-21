@@ -157,12 +157,17 @@ def main():
                    help='Override results/norm_study_summary.csv (for testing).')
     p.add_argument('--out-dir', default=None,
                    help='Write PDFs here instead of the course stage folders.')
+    p.add_argument('--epochs', type=int, default=300,
+                   help='Epoch budget actually used for the ZINC grid '
+                        '(use 50 for a Kaggle quick run); passed to the '
+                        'report builder so the PDF states the right number.')
     args = p.parse_args()
 
     csv_path = Path(args.csv).resolve() if args.csv else SUMMARY
     if check_csv(csv_path) is None:
         return 1
-    build_cmd = [sys.executable, 'docs/build_reports.py']
+    build_cmd = [sys.executable, 'docs/build_reports.py',
+                 '--epochs', str(args.epochs)]
     if args.csv:
         build_cmd += ['--zinc-csv', str(csv_path)]
     if args.out_dir:
