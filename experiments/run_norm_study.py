@@ -24,12 +24,20 @@ NORMS = ('batch', 'layer', 'graph', 'pair', 'none')
 DEPTHS = (4, 8, 12, 20)
 
 
-def make_config(norm, depth, epochs, template):
+def make_config(norm, depth, epochs, template, tag=''):
     """Create a per-cell YAML based on the official zinc.yaml."""
     text = (ROOT / template).read_text(encoding='utf-8')
     text = text.replace('out_dir: results', 'out_dir: results/norm_study', 1)
     text = re.sub(r'(?m)^  max_epoch: .*$', '  max_epoch: {}'.format(epochs),
                   text, count=1)
+    # A short budget (smoke check) must not be shorter than the configured
+    # warmup: otherwise the LR stays in warmup for the whole run and the cell
+    # "trains" without ever reaching the normal schedule.
+    warm = re.search(r'(?m)^  num_warmup_epochs: (\d+)\s*$', text)
+    if warm and int(warm.group(1)) >= epochs:
+        text = re.sub(r'(?m)^  num_warmup_epochs: .*$',
+                      '  num_warmup_epochs: {}'.format(max(1, epochs // 10)),
+                      text, count=1)
     text = re.sub(r'(?m)^  layers_mp: .*$', '  layers_mp: {}'.format(depth),
                   text, count=1)
     if re.search(r'(?m)^  norm:', text):
@@ -40,7 +48,10 @@ def make_config(norm, depth, epochs, template):
                             '  residual: True\n  norm: {}\n'.format(norm), 1)
     out_dir = ROOT / 'configs' / 'generated'
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / 'zinc_norm_{}_d{}.yaml'.format(norm, depth)
+    # A tagged run (e.g. the one-cell smoke test) uses its own result dir,
+    # which the aggregator's strict naming pattern deliberately ignores.
+    suffix = '_{}'.format(tag) if tag else ''
+    path = out_dir / 'zinc_norm_{}_d{}{}.yaml'.format(norm, depth, suffix)
     path.write_text(text, encoding='utf-8')
     return path
 
@@ -76,6 +87,9 @@ def main():
     p.add_argument('--epochs', type=int, default=300,
                    help='optim.max_epoch; original paper uses 2000.')
     p.add_argument('--template', default='configs/gcn/zinc.yaml')
+    p.add_argument('--tag', default='',
+                   help='Suffix for config/result dirs; tagged runs are '
+                        'excluded from the aggregated ZINC table.')
     p.add_argument('--dry-run', action='store_true',
                    help='Only print commands, do not train.')
     p.add_argument('--skip-existing', action='store_true',
@@ -86,9 +100,14 @@ def main():
     log_dir.mkdir(parents=True, exist_ok=True)
     manifest = []
 
+    def save_manifest():
+        (ROOT / 'experiments' / 'norm_study_manifest.json').write_text(
+            json.dumps(manifest, indent=2), encoding='utf-8')
+
     for norm in args.norms:
         for depth in args.depths:
-            cfg_path = make_config(norm, depth, args.epochs, args.template)
+            cfg_path = make_config(norm, depth, args.epochs, args.template,
+                                   args.tag)
             # Store a portable relative command in the manifest; on this
             # machine subprocess still runs the absolute interpreter path.
             cmd = [sys.executable, str(ROOT / 'main.py'),
@@ -121,14 +140,37 @@ def main():
                 proc.returncode, time.time() - started,
                 log_path.relative_to(ROOT)))
             if proc.returncode != 0:
-                print('       FAILED - see log; aborting sweep.',
+                # Surface the real traceback in the notebook.  Hiding it in a
+                # log file is how a failed sweep once produced an empty CSV
+                # without anybody noticing.
+                tail = log_path.read_text(
+                    encoding='utf-8', errors='replace').splitlines()[-40:]
+                print('\n----- last {} lines of {} -----'.format(
+                    len(tail), log_path.relative_to(ROOT)), file=sys.stderr)
+                print('\n'.join(tail), file=sys.stderr)
+                print('----- end of log -----\n', file=sys.stderr)
+                print('FAILED - {} d={}; aborting sweep.'.format(norm, depth),
                       file=sys.stderr)
-                return proc.returncode
+                save_manifest()
+                return proc.returncode or 1
 
-    (ROOT / 'experiments' / 'norm_study_manifest.json').write_text(
-        json.dumps(manifest, indent=2), encoding='utf-8')
+    save_manifest()
     print('\nWrote experiments/norm_study_manifest.json '
           '({} cells)'.format(len(manifest)))
+    if args.dry_run:
+        print('Dry run: no training started.')
+        return 0
+    missing = ['{} d={}'.format(m['norm'], m['depth']) for m in manifest
+               if not cell_complete(Path(m['result_dir']).name, m['seeds'])]
+    if missing:
+        print('\nINCOMPLETE: {}/{} cells produced no test stats:'.format(
+            len(missing), len(manifest)), file=sys.stderr)
+        for name in missing:
+            print('  - ' + name, file=sys.stderr)
+        print('Do not aggregate yet: the summary would be empty.',
+              file=sys.stderr)
+        return 1
+    print('All {} cells produced test stats.'.format(len(manifest)))
     return 0
 
 
