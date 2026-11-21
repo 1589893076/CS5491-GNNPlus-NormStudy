@@ -45,6 +45,12 @@ def check_csv(path):
         return None
     with path.open(newline='', encoding='utf-8') as fh:
         rows = list(csv.DictReader(fh))
+    if not rows:
+        print('ERROR: {} has no data rows (header only).'.format(path))
+        print('The ZINC sweep did not complete, so there are no real numbers.')
+        print('Nothing will be rebuilt or committed. Go back to the Colab')
+        print('sweep cell, read its error output, fix it and re-run the grid.')
+        return None
     found = set()
     bad = []
     for r in rows:
