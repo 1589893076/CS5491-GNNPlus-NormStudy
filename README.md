@@ -88,6 +88,20 @@ matches the runtime's PyTorch version, the notebook activates
 runs its self-test). When the real extension is installed it takes
 precedence, so this fallback never changes an experimental number.
 
+**PyG API compatibility.** Newer `torch_geometric` releases generate a
+jittable `MessagePassing.propagate` template that rejects the custom keyword
+arguments used by upstream `GCNConvWithEdges.forward`
+(`TypeError: propagate() got an unexpected keyword argument 'edge_attr'`),
+which aborted the first ZINC training cell before any `stats.json` existed.
+That layer now performs the identical sum aggregation with plain PyTorch
+(`relu(x_j + edge_attr)` followed by `index_add_`) and never calls
+`propagate`, so the sweep runs on any PyG version. Equivalence is checked by
+`python experiments/test_gnn_pyg_compat.py`: it loads the real layer with the
+fallback active, compares its output against an independent scatter-add
+ground truth (max difference 0), verifies gradients and asserts that
+`propagate` is never called. `MYPROJECT_CHANGES.diff` lists the upstream-file
+edits; this compatibility patch is described here and in the layer's comment.
+
 ---
 
 ## 4. Reproduction commands

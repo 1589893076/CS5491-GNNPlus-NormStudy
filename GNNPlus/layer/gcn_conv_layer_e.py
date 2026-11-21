@@ -41,42 +41,36 @@ class GCNConvWithEdges(GCNConv):
         return (x_j + edge_attr).relu()
         # return (x_j).relu()
 
-    def forward(self, x: Tensor, edge_index: Adj, edge_attr: OptTensor = None, edge_weight: OptTensor = None) -> Tensor:
-        
-        # Normalize the adjacency matrix if needed
-        if self.normalize:
-            if isinstance(edge_index, Tensor):
-                cache = self._cached_edge_index
-                if cache is None:
-                    edge_index, edge_weight = gcn_norm(
-                        edge_index, edge_weight, x.size(self.node_dim),
-                        self.improved, self.add_self_loops, self.flow, x.dtype)
-                    if self.cached:
-                        self._cached_edge_index = (edge_index, edge_weight)
-                else:
-                    edge_index, edge_weight = cache[0], cache[1]
-
-            elif isinstance(edge_index, SparseTensor):
-                cache = self._cached_adj_t
-                if cache is None:
-                    edge_index = gcn_norm(
-                        edge_index, edge_weight, x.size(self.node_dim),
-                        self.improved, self.add_self_loops, self.flow, x.dtype)
-                    if self.cached:
-                        self._cached_adj_t = edge_index
-                else:
-                    edge_index = cache
-
-        # Apply linear transformation to node features
+    def forward(self, x: Tensor, edge_index: Adj, edge_attr: OptTensor = None,
+                edge_weight: OptTensor = None) -> Tensor:
+        # CS5491 PyG-compatibility patch.
+        #
+        # Upstream called
+        #     self.propagate(edge_index, x=x, edge_attr=edge_attr,
+        #                    edge_weight=edge_weight, size=None)
+        # Newer PyG releases generate a jittable `propagate` template from the
+        # message() signature.  On Colab this raised
+        #     TypeError: propagate() got an unexpected keyword argument
+        #     'edge_attr'
+        # before the first training step could finish.  Reproduce the same
+        # computation with plain PyTorch so the layer no longer depends on
+        # that template:
+        #     x_j = x[edge_index[0]] ; msg = relu(x_j + edge_attr)
+        #     out[i] = sum_{j -> i} msg_j   (GCNConv's default add/sum aggr)
+        # __init__ passes add_self_loops=False and normalize=False, so there
+        # is no adjacency normalisation to reproduce.  edge_weight was passed
+        # to propagate() but never consumed by message(), so it stays unused.
         x = self.lin(x)
-
-        # Propagate the message passing with edge attributes
-        out = self.propagate(edge_index, x=x, edge_attr=edge_attr, edge_weight=edge_weight, size=None)
-
-        # Add bias if it exists
+        if (not isinstance(edge_index, Tensor) or edge_index.dim() != 2
+                or edge_index.size(0) != 2):
+            raise TypeError('GCNConvWithEdges expects a [2, E] LongTensor '
+                            'edge_index; got {!r}'.format(type(edge_index)))
+        src, dst = edge_index[0], edge_index[1]
+        x_j = x.index_select(0, src)
+        msg = x_j.relu() if edge_attr is None else (x_j + edge_attr).relu()
+        out = torch.zeros_like(x).index_add_(0, dst, msg)
         if self.bias is not None:
             out = out + self.bias
-
         return out
     
 class GCNConvLayer(nn.Module):
