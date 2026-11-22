@@ -159,15 +159,19 @@ def main():
                    help='Write PDFs here instead of the course stage folders.')
     p.add_argument('--epochs', type=int, default=300,
                    help='Epoch budget actually used for the ZINC grid '
-                        '(use 50 for a Kaggle quick run); passed to the '
+                        '(use 10 for the Kaggle short run); passed to the '
                         'report builder so the PDF states the right number.')
+    p.add_argument('--repeat', type=int, default=3,
+                   help='Seeds per cell actually used in the ZINC sweep '
+                        '(use 1 for the Kaggle short run).')
     args = p.parse_args()
 
     csv_path = Path(args.csv).resolve() if args.csv else SUMMARY
     if check_csv(csv_path) is None:
         return 1
     build_cmd = [sys.executable, 'docs/build_reports.py',
-                 '--epochs', str(args.epochs)]
+                 '--epochs', str(args.epochs),
+                 '--repeat', str(args.repeat)]
     if args.csv:
         build_cmd += ['--zinc-csv', str(csv_path)]
     if args.out_dir:
