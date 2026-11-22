@@ -451,7 +451,7 @@ def milestone_story(pilot, zinc):
     s += [bullet('Re-run key cells at 2000 epochs to check that the ranking '
                  'is not an artefact of the reduced epoch budget.'),
           bullet('Finalize the four-page report and publish the public '
-                 'repository with its commit hash.')]
+                 'repository.')]
 
     s += [P('Artifacts', HEAD)]
     s += [artifacts_line(),
