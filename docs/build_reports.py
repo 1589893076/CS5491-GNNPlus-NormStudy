@@ -59,10 +59,9 @@ def git_hash():
 
 
 def artifacts_line():
-    """One-line provenance footer with the public repo URL and commit hash."""
-    return P('Code and artifacts: <font name="TNR">' + REPO_URL +
-             '</font> &nbsp;|&nbsp; commit <font name="TNR">' + git_hash() +
-             '</font>.', REF)
+    """One-line provenance footer with the public repo URL."""
+    return P('Code and artifacts: <font name="TNR">' + REPO_URL + '</font>.',
+             REF)
 
 
 def register_fonts():
@@ -458,8 +457,7 @@ def milestone_story(pilot, zinc):
     s += [artifacts_line(),
           P('The repository contains the experiment code, the generated '
             'configs, the aggregation script and the CSV the tables above are '
-            'read from. The commit hash identifies the exact revision used to '
-            'build this report.', REF)]
+            'read from.', REF)]
 
     s += [P('References', HEAD)]
     s += [P('[1] Y. Luo, L. Shi, X.-M. Wu. Can Classic GNNs Be Strong '
@@ -680,8 +678,7 @@ def final_story(pilot, zinc):
     s += [artifacts_line(),
           P('The repository contains the experiment code, the generated '
             'configs, the aggregation script and the CSV the tables above are '
-            'read from. The commit hash identifies the exact revision used to '
-            'build this report.', REF)]
+            'read from.', REF)]
 
     s += [P('References', HEAD)]
     for ref in [
