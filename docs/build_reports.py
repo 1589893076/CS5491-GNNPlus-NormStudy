@@ -41,6 +41,8 @@ FONT_DIR = Path(os.environ.get('WINDIR', r'C:\Windows')) / 'Fonts'
 # Epoch budget of the ZINC sweep. Overridden by --epochs (e.g. 30 on Kaggle)
 # so the report always states the budget that was actually run.
 EPOCHS = 300
+# Seeds per cell actually used in the ZINC sweep (overridden by --repeat).
+REPEAT = 3
 
 # Public code repository and its current commit hash. The hash is read at
 # build time so the PDF always points at the exact revision it was built from.
@@ -397,15 +399,16 @@ def milestone_story(pilot, zinc):
             'of the hard-coded flag; the edit is about thirty lines and is '
             'recorded in <font name="TNR">MYPROJECT_CHANGES.diff</font>.')]
     s += [P('The experiment is a 5 × 4 grid: normalization in {batch, layer, '
-            'graph, pair, none} crossed with depth in {4, 8, 12, 20}, three '
-            'seeds per cell. We use the ZINC subset (about 12,000 molecular '
+            'graph, pair, none} crossed with depth in {4, 8, 12, 20}, @REPEAT@ '
+            'seed(s) per cell. We use the ZINC subset (about 12,000 molecular '
             'graphs, downloaded automatically by PyG), the GCN+ backbone and '
             'test MAE (lower is better) selected at the best validation epoch. '
             'Each run uses @EPOCHS@ epochs to keep the grid affordable; key cells '
             'will be re-run at the paper’s 2000 epochs. A sweep script '
             'generates one YAML per cell and an aggregator produces the '
             'mean ± standard-deviation table, so every reported number can be '
-            'recomputed from the committed code.'.replace('@EPOCHS@', str(EPOCHS)))]
+            'recomputed from the committed code.'.replace('@EPOCHS@', str(EPOCHS))
+            .replace('@REPEAT@', str(REPEAT)))]
 
     s += [P('4. Preliminary results', HEAD)]
     s += [P('The patch is complete and passes a PyTorch-only smoke test: the '
@@ -414,7 +417,7 @@ def milestone_story(pilot, zinc):
             'options return finite, correctly shaped tensors. To obtain real '
             'numbers without a GPU, we also ran a CPU pilot on a synthetic '
             'graph-regression task with the same normalization module '
-            '(3 seeds, 120 epochs):')]
+            '(@REPEAT@ seed(s), 120 epochs):'.replace('@REPEAT@', str(REPEAT)))]
     depths = sorted({int(r['depth']) for r in pilot}) or [4, 8, 12, 20]
     s += [result_table(pilot, depths, 'pilot'),
           P('Table 1. Synthetic-pilot test MAE (mean ± std). This is a sanity '
@@ -439,10 +442,11 @@ def milestone_story(pilot, zinc):
     else:
         s += [P('Status of the main experiment: the code and configs are ready '
                 'and the exact command is <font name="TNR">python '
-                'experiments/run_norm_study.py --repeat 3 --epochs @EPOCHS@</font>. '
+                'experiments/run_norm_study.py --repeat @REPEAT@ --epochs @EPOCHS@</font>. '
                 'The ZINC table will be filled from '
                 '<font name="TNR">results/norm_study_summary.csv</font> once the '
-                'GPU run completes; no values are fabricated here.'.replace('@EPOCHS@', str(EPOCHS)))]
+                'GPU run completes; no values are fabricated here.'
+                .replace('@EPOCHS@', str(EPOCHS)).replace('@REPEAT@', str(REPEAT)))]
 
     s += [P('5. Work remaining', HEAD)]
     if not zinc:
@@ -492,7 +496,7 @@ def final_story(pilot, zinc):
             'would be better, especially at the depth of 20 layers that its '
             'residual connections enable. We make normalization configurable '
             'in the official codebase and study five choices across four '
-            'depths on ZINC, with three seeds per cell. ' + abstract_tail)]
+            'depths on ZINC, with ' + str(REPEAT) + ' seed(s) per cell. ' + abstract_tail)]
 
     s += [P('1. Motivation and problem', HEAD)]
     s += [P('Graph Transformers dominate many graph-level benchmarks, but '
@@ -563,13 +567,14 @@ def final_story(pilot, zinc):
             'Model: <font name="TNR">custom_gnn</font> with '
             '<font name="TNR">layer_type: gcne</font> (GCN+). Factors: '
             'normalization in {batch, layer, graph, pair, none} and depth in '
-            '{4, 8, 12, 20}. Three seeds per cell; test MAE (lower is better) '
+            '{4, 8, 12, 20}. @REPEAT@ seed(s) per cell; test MAE (lower is better) '
             'is read at the epoch with best validation MAE and summarized as '
             'mean ± standard deviation. Each run trains for @EPOCHS@ epochs, with '
             'key cells scheduled for 2000 epochs to match the paper. '
             'Baselines are the paper’s reported GCN+ number and the '
             '<font name="TNR">none</font> control, which reproduces the '
-            'remove-normalization ablation.'.replace('@EPOCHS@', str(EPOCHS)))]
+            'remove-normalization ablation.'.replace('@EPOCHS@', str(EPOCHS))
+            .replace('@REPEAT@', str(REPEAT)))]
 
     s += [P('4. Results and insights', HEAD)]
     if zinc:
@@ -593,8 +598,8 @@ def final_story(pilot, zinc):
             s += [chart_from_rows(pilot, PILOT_CAPTION)]
     s += [P('As a mechanism check that runs on any CPU, we applied the same '
             'normalization factory to a small synthetic graph-regression '
-            'task (240 graphs, 12-dimensional hidden size, 3 seeds, 120 '
-            'epochs).')]
+            'task (240 graphs, 12-dimensional hidden size, @REPEAT@ seed(s), 120 '
+            'epochs).'.replace('@REPEAT@', str(REPEAT)))]
     pilot_depths = sorted({int(r['depth']) for r in pilot}) or [4, 8, 12, 20]
     s += [result_table(pilot, pilot_depths, 'pilot'),
           P('Table 4. Synthetic-pilot test MAE (mean ± std). Not ZINC '
@@ -623,7 +628,7 @@ def final_story(pilot, zinc):
             'the exact Python version and package list, and one command per '
             'experiment. <font name="TNR">experiments/run_norm_study.py'
             '</font> creates a separate YAML and output directory for each '
-            'cell, launches GraphGym with three seeds, writes logs and a '
+            'cell, launches GraphGym with ' + str(REPEAT) + ' seed(s), writes logs and a '
             'manifest, and supports resuming. '
             '<font name="TNR">experiments/aggregate_norm_study.py</font> '
             'produces both a CSV and a Markdown table. New modules and '
@@ -638,9 +643,10 @@ def final_story(pilot, zinc):
         ['Check the patch',
          'python experiments/test_norm_smoke.py'],
         ['Reproduce original setting',
-         'python main.py --cfg configs/gcn/zinc.yaml --repeat 3 seed 0'],
+         'python main.py --cfg configs/gcn/zinc.yaml --repeat ' + str(REPEAT) + ' seed 0'],
         ['Run the full grid',
-         'python experiments/run_norm_study.py --repeat 3 --epochs @EPOCHS@'.replace('@EPOCHS@', str(EPOCHS))],
+         'python experiments/run_norm_study.py --repeat @REPEAT@ --epochs @EPOCHS@'
+         .replace('@EPOCHS@', str(EPOCHS)).replace('@REPEAT@', str(REPEAT))],
         ['Build result table',
          'python experiments/aggregate_norm_study.py'],
         ['Rebuild this PDF',
@@ -694,8 +700,10 @@ def final_story(pilot, zinc):
 
 
 def main():
-    global EPOCHS
+    global EPOCHS, REPEAT
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--repeat', type=int, default=3,
+                   help='Seeds per cell actually used in the ZINC sweep.')
     p.add_argument('--epochs', type=int, default=300,
                    help='Epoch budget actually used for the ZINC grid; '
                         'printed in the report (use 50 for a Kaggle quick run).')
@@ -708,6 +716,7 @@ def main():
                    help='Override results/norm_study_summary.csv.')
     args = p.parse_args()
     EPOCHS = args.epochs
+    REPEAT = args.repeat
 
     pilot = read_csv(Path(args.pilot_csv) if args.pilot_csv else
                      ROOT / 'results' / 'pilot_norm_study.csv')
