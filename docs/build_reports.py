@@ -20,6 +20,7 @@ import argparse
 import csv
 import os
 import statistics
+import subprocess
 import sys
 from pathlib import Path
 
@@ -37,9 +38,31 @@ from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate,
 ROOT = Path(__file__).resolve().parents[1]
 FONT_DIR = Path(os.environ.get('WINDIR', r'C:\Windows')) / 'Fonts'
 
-# Epoch budget of the ZINC sweep. Overridden by --epochs (e.g. 50 on Kaggle)
+# Epoch budget of the ZINC sweep. Overridden by --epochs (e.g. 30 on Kaggle)
 # so the report always states the budget that was actually run.
 EPOCHS = 300
+
+# Public code repository and its current commit hash. The hash is read at
+# build time so the PDF always points at the exact revision it was built from.
+REPO_URL = 'https://github.com/1589893076/CS5491-GNNPlus-NormStudy'
+
+
+def git_hash():
+    """Return the short HEAD commit hash of the repository, or 'unknown'."""
+    try:
+        out = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'], cwd=str(ROOT),
+            stderr=subprocess.DEVNULL, text=True)
+        return out.strip()
+    except Exception:
+        return 'unknown'
+
+
+def artifacts_line():
+    """One-line provenance footer with the public repo URL and commit hash."""
+    return P('Code and artifacts: <font name="TNR">' + REPO_URL +
+             '</font> &nbsp;|&nbsp; commit <font name="TNR">' + git_hash() +
+             '</font>.', REF)
 
 
 def register_fonts():
@@ -431,6 +454,13 @@ def milestone_story(pilot, zinc):
           bullet('Finalize the four-page report and publish the public '
                  'repository with its commit hash.')]
 
+    s += [P('Artifacts', HEAD)]
+    s += [artifacts_line(),
+          P('The repository contains the experiment code, the generated '
+            'configs, the aggregation script and the CSV the tables above are '
+            'read from. The commit hash identifies the exact revision used to '
+            'build this report.', REF)]
+
     s += [P('References', HEAD)]
     s += [P('[1] Y. Luo, L. Shi, X.-M. Wu. Can Classic GNNs Be Strong '
             'Baselines for Graph-level Tasks? ICML 2025.', REF),
@@ -645,6 +675,13 @@ def final_story(pilot, zinc):
                 'normalization used. These conclusions come from the logged '
                 'runs and remain limited to the @EPOCHS@-epoch budget stated '
                 'above.'.replace('@EPOCHS@', str(EPOCHS)))]
+
+    s += [P('Artifacts', HEAD)]
+    s += [artifacts_line(),
+          P('The repository contains the experiment code, the generated '
+            'configs, the aggregation script and the CSV the tables above are '
+            'read from. The commit hash identifies the exact revision used to '
+            'build this report.', REF)]
 
     s += [P('References', HEAD)]
     for ref in [
