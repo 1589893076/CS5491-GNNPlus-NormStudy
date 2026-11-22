@@ -60,10 +60,16 @@ def git_hash():
         return 'unknown'
 
 
-def artifacts_line():
-    """One-line provenance footer with the public repo URL."""
-    return P('Code and artifacts: <font name="TNR">' + REPO_URL + '</font>.',
-             REF)
+def artifacts_line(include_hash=False):
+    """One-line provenance footer with the public repo URL.
+
+    include_hash=True appends the short commit hash; only the final report
+    uses it, and only after the run is stable.
+    """
+    line = 'Code and artifacts: <font name="TNR">' + REPO_URL + '</font>.'
+    if include_hash:
+        line += ' Commit: <font name="TNR">' + git_hash() + '</font>.'
+    return P(line, REF)
 
 
 def register_fonts():
@@ -75,7 +81,20 @@ def register_fonts():
         if path.exists():
             pdfmetrics.registerFont(TTFont(name, str(path)))
         else:
-            pdfmetrics.registerFont(TTFont(name, 'Times-Roman'))
+            # Kaggle/Colab are Linux and have no C:\Windows\Fonts.  Register
+            # reportlab's built-in Times faces under the same TNR aliases so
+            # styles and <font name="TNR"> keep working verbatim.  reportlab
+            # 5.x exposes Font(); older releases use Type1Font.
+            _faces = {'TNR': 'Times-Roman', 'TNR-Bold': 'Times-Bold',
+                      'TNR-Italic': 'Times-Italic',
+                      'TNR-BoldItalic': 'Times-BoldItalic'}
+            try:
+                from reportlab.pdfbase.pdfmetrics import Font
+                pdfmetrics.registerFont(Font(name, _faces[name],
+                                             'WinAnsiEncoding'))
+            except ImportError:
+                from reportlab.pdfbase.pdfmetrics import Type1Font
+                pdfmetrics.registerFont(Type1Font(name, _faces[name]))
     pdfmetrics.registerFontFamily('TNR', normal='TNR', bold='TNR-Bold',
                                   italic='TNR-Italic',
                                   boldItalic='TNR-BoldItalic')
@@ -681,7 +700,7 @@ def final_story(pilot, zinc):
                 'above.'.replace('@EPOCHS@', str(EPOCHS)))]
 
     s += [P('Artifacts', HEAD)]
-    s += [artifacts_line(),
+    s += [artifacts_line(include_hash=True),
           P('The repository contains the experiment code, the generated '
             'configs, the aggregation script and the CSV the tables above are '
             'read from.', REF)]
